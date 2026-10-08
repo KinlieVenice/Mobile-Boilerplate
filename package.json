@@ -1,0 +1,12 @@
+{
+  "name": "hackathon-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run start --workspace=frontend",
+    "check:frontend": "npm exec --workspace=frontend -- tsc --noEmit"
+  }
+}
