@@ -59,7 +59,9 @@ modules/                  Expo local native modules (service, device-stats, pdf-
 | Table | Key columns |
 |-------|-------------|
 | projects | id, title, created_at, settings_json |
-| sources | id, project_id, kind (text/pdf/docx), uri, sha256, text_extracted |
+| files | id, kind (text/pdf/docx; audio/image in v2), name, path, size, sha256 (unique), pages_or_duration, origin (upload/paste/recording/capture), extract_status, created_at. The Files tab lists this table; independent of any project. |
+| file_text | file_id, text, page_map_json (page/heading offsets). Extraction is cached per file and reused by every project. |
+| sources | id, project_id, file_id, selected_sections_json. Join between a project (Library entry) and a file; one file can be used by many projects. |
 | chunks | id, source_id, idx, heading, text, token_est, page_range |
 | jobs | id, project_id, mode (quick/thorough), status, stage, progress, model_id, error, started/finished_at |
 | job_steps | job_id, stage, chunk_id, status, output_json, attempts, duration_ms, tokens_in/out |
@@ -67,6 +69,8 @@ modules/                  Expo local native modules (service, device-stats, pdf-
 | items | id, project_id, type (note/card/question), payload_json, source_chunk_ids, flagged, edited |
 | card_state | item_id, FSRS fields (due, stability, difficulty, reps, lapses, last_review) |
 | quiz_attempts | id, project_id, config_json, score, taken_at |
+| generations | id, project_id, output_type, focus_note, config_json, status, item_count, created_at. `items` gain a `generation_id`. Each "Generate more" run creates one row; duplicate check runs against existing items of the project. |
+| review_log | id, item_id, project_id, kind (card/question), result (again/hard/good/easy or correct/wrong), reviewed_at, duration_ms. Streaks, mastery, weak spots and stats are computed from this. |
 | models | id, name, path, size, sha256, status (missing/downloading/ready), kind |
 
 `job_steps` is the checkpoint: each stage is keyed by (job, stage, chunk) and idempotent, so a resume after
@@ -122,6 +126,17 @@ Stages: `extract -> normalize -> chunk -> map -> reduce -> build_items`.
 
 ## 8. Ingest
 
+- **Storage of uploads:** on import, the file is *copied* into app-private storage
+  (`<documentDirectory>/files/<fileId>.<ext>`), and a `files` row is created (deduplicated by sha256). Never
+  keep only the picker's URI: Android content URIs can stop working. Pasted text becomes a text file in the same
+  store. Files are independent of projects: deleting a Library entry removes the `sources` links but keeps the
+  files; deleting a file (Files tab) removes the stored copy but projects keep their chunks and extracted text, so
+  "Show source" still works as text. Uninstalling the app deletes everything (the files are not visible in the
+  system Files app).
+- **Viewing sources (v1):** the Details screen lists sources; tapping one opens an in-app viewer of the
+  extracted text with page markers (reliable, offline). "Open original" hands the stored file to the system PDF/doc
+  viewer through a FileProvider URI. Each item's "Show source" jumps to its chunk/page in that viewer.
+  An in-app page-image view (Android `PdfRenderer`) can come later.
 - **Text:** direct.
 - **DOCX:** unzip (e.g. `fflate`) + XML parse of `word/document.xml`; keep headings and lists.
 - **PDF text layer:** the least trivial part. Options: a native module wrapping an Apache-licensed Android

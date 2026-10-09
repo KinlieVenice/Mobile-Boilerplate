@@ -152,6 +152,30 @@ Requirement: **internet (Wi-Fi) needed** for Tagalog/Taglish processing. Everyth
   Tagalog (local models may still be weak: consider cloud for those too).
 - The "open-source models only" rule applies to on-device models; the cloud choice is a separate decision.
 
+Cloud model selection (evidence as of Oct 2026, thin):
+- FilBench (EMNLP 2025, 27 LLMs): GPT-4o top (about 72%), Llama 4 Maverick next (about 68%), best open dense
+  Qwen2.5 72B (about 63%), best SEA-specific SEA-LION v3 70B (about 61%). Understanding/classification/reading
+  comprehension is strong; **generation is the weak spot even for the best models** (GPT-4o about 46% on
+  generation). No published Filipino scores found for current Claude/Gemini/GPT/Qwen3+ releases.
+- So: choose by our own test, not a leaderboard. Evaluate 3 frontier APIs (small and large tier of each) plus
+  optionally a self-hosted open model, on ~5 real Tagalog/Taglish study documents. Score: factual
+  correctness, answer-in-source, fluency of generated questions.
+- Design consequence: keep the span-grounded approach (questions built from source Tagalog sentences); consider
+  English-language question text over Tagalog source if generated Tagalog is weak.
+- Keep `CloudEngine` provider-agnostic; start with the user's own API key in `expo-secure-store`.
+
+Candidate Tagalog models (saved for Phase 3 evaluation; none run on the phone):
+- `mradermacher/gemma-2-9b-tagalog-chat-GGUF` (fine-tune by 922-Narra of Gemma 2 9B). Q4_K_M 5.9 GB. Page says
+  Apache-2.0, but it is a Gemma derivative, so Gemma terms likely apply. Training data unstated.
+- `PLTAT/Filipino_llama_3.1_FT_8B_GGUF` (Filipino fine-tune of Llama 3.1 8B, Alpaca prompt template).
+  Only Q8_0 listed (8.54 GB). Llama 3.1 license. Training data and benchmarks unstated; card warns of
+  hallucination, Taglish mixing and Manila-Tagalog bias; namespace inconsistency (PLTAT vs welyjesch).
+- `LWobole/whisper-small-tagalog` (Tagalog STT, Apache-2.0, FLEURS-only fine-tune, overfit signs, safetensors
+  only, would need ggml conversion).
+Option: self-host the two LLMs on a GPU server instead of (or next to) a commercial API. Compare all options
+on real Tagalog study material before choosing. `roberta-tagalog-base` is an encoder (fill-mask), not usable
+as the generator.
+
 ## 9. Phase 0: feasibility spike (English)
 
 Goal: prove the core loop on a real phone, and learn the real speed. Build a `/bench` screen in a dev build.
